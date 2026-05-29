@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>印鑑PDF挿入 — 無料・ブラウザ完結・登録不要</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f7;
+      --white: #ffffff;
+      --border: #d1d5db;
+      --accent: #1d4ed8;
+      --accent-light: #dbeafe;
+      --text: #111827;
+      --text-soft: #6b7280;
+      --red: #dc2626;
+      --green: #16a34a;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ヘッダー */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    header .logo { font-size: 22px; }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header .badge {
+      font-size: 11px;
+      background: #dcfce7;
+      color: var(--green);
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+      border: 1px solid #bbf7d0;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; padding: 16px; }
+    }
+
+    /* カード */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 14px;
+    }
+
+    /* ドロップゾーン */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .dropzone-icon { font-size: 28px; margin-bottom: 6px; }
+    .dropzone-text { font-size: 13px; color: var(--text-soft); }
+    .dropzone-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    .dropzone.has-file { border-style: solid; border-color: var(--green); background: #f0fdf4; }
+    .dropzone.has-file .dropzone-icon::after { content: " ✓"; font-size: 14px; color: var(--green); }
+
+    /* 印鑑サイズ・位置コントロール */
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .control-label { font-size: 13px; color: var(--text-soft); }
+    .control-value { font-size: 13px; font-weight: 600; }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      margin: 6px 0 12px;
+    }
+
+    /* ページ選択 */
+    .page-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .page-nav button {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 32px; height: 32px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .page-nav button:hover:not(:disabled) { background: var(--accent-light); }
+    .page-nav button:disabled { opacity: 0.3; cursor: default; }
+    .page-nav span { font-size: 13px; color: var(--text-soft); flex: 1; text-align: center; }
+
+    /* ダウンロードボタン */
+    .btn-download {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 16px;
+    }
+    .btn-download:hover:not(:disabled) { background: #1e40af; transform: translateY(-1px); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+    /* プレビューエリア */
+    .preview-area {
+      position: relative;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preview-empty {
+      text-align: center;
+      color: var(--text-soft);
+      padding: 40px;
+    }
+    .preview-empty .icon { font-size: 48px; margin-bottom: 12px; }
+    .preview-empty p { font-size: 14px; }
+
+    #preview-canvas {
+      display: block;
+      max-width: 100%;
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* 印鑑オーバーレイ */
+    #hanko-overlay {
+      position: absolute;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+    #hanko-overlay:active { cursor: grabbing; }
+    #hanko-overlay img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    #hanko-overlay .resize-handle {
+      position: absolute;
+      bottom: -6px; right: -6px;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border: 2px solid white;
+      border-radius: 50%;
+      cursor: se-resize;
+    }
+
+    /* フッター */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    /* ステータスメッセージ */
+    .status-msg {
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: none;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.info { background: var(--accent-light); color: var(--accent); }
+    .status-msg.success { background: #dcfce7; color: var(--green); }
+    .status-msg.error { background: #fee2e2; color: var(--red); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🔴</span>
+  <h1>印鑑PDF挿入</h1>
+  <span class="badge">完全無料・登録不要</span>
+  <span style="margin-left:auto; font-size:11px; color:var(--text-soft);">データはすべてブラウザ内で処理。サーバーに送信しません。</span>
+</header>
+
+<main>
+  <!-- 左: コントロールパネル -->
+  <div style="display:flex; flex-direction:column; gap:16px;">
+
+    <!-- STEP 1: PDF -->
+    <div class="card">
+      <div class="card-title">① PDFファイルを選択</div>
+      <div class="dropzone" id="pdf-dropzone">
+        <input type="file" id="pdf-input" accept=".pdf" />
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-text">クリックまたはドラッグ</div>
+        <div class="dropzone-sub">.pdf ファイル</div>
+      </div>
+    </div>
+
+    <!-- STEP 2: 印鑑 -->
+    <div class="card">
+      <div class="card-title">② 印鑑画像を選択（PNG推奨）</div>
+      <div class="dropzone" id="hanko-dropzone">
+        <input type="file" id="hanko-input" accept="image/*" />
+        <div class="dropzone-icon">🔴</div>
+        <div class="dropzone-text">クリックまたはドラッグ</div>
+        <div class="dropzone-sub">PNG（透過背景推奨）/ JPG / GIF</div>
+      </div>
+    </div>
+
+    <!-- STEP 3: 調整 -->
+    <div class="card" id="controls-card" style="display:none;">
+      <div class="card-title">③ 位置・サイズを調整</div>
+
+      <div class="page-nav">
+        <button id="prev-page" disabled>◀</button>
+        <span id="page-label">1 / 1 ページ</span>
+        <button id="next-page" disabled>▶</button>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">印鑑サイズ</span>
+        <span class="control-value" id="size-val">80px</span>
+      </div>
+      <input type="range" id="size-range" min="30" max="300" value="80" />
+
+      <div class="control-row">
+        <span class="control-label">透明度</span>
+        <span class="control-value" id="opacity-val">100%</span>
+      </div>
+      <input type="range" id="opacity-range" min="10" max="100" value="100" />
+
+      <div style="font-size:12px; color:var(--text-soft); background:#f9fafb; border-radius:8px; padding:10px; margin-top:4px;">
+        💡 右側のプレビュー上で印鑑をドラッグして位置を調整できます
+      </div>
+
+      <button class="btn-download" id="download-btn" disabled>
+        📥 印鑑入りPDFをダウンロード
+      </button>
+
+      <div class="status-msg" id="status-msg"></div>
+    </div>
+
+  </div>
+
+  <!-- 右: プレビュー -->
+  <div class="card" style="padding:16px;">
+    <div class="card-title">プレビュー</div>
+    <div class="preview-area" id="preview-area">
+      <div class="preview-empty" id="preview-empty">
+        <div class="icon">📄</div>
+        <p>PDFを選択するとここに表示されます</p>
+      </div>
+      <canvas id="preview-canvas" style="display:none;"></canvas>
+      <div id="hanko-overlay" style="display:none; width:80px; height:80px; top:40%; left:60%;">
+        <img id="hanko-img" alt="印鑑" />
+        <div class="resize-handle" id="resize-handle"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  印鑑PDF挿入 — すべての処理はブラウザ内で完結。PDFデータは外部に送信されません。
+</footer>
+
+<script>
+  // PDF.js worker設定
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // --- 状態管理 ---
+  let pdfDoc = null;       // pdf-lib PDFDocument
+  let pdfJsDoc = null;     // PDF.js document
+  let currentPage = 1;
+  let totalPages = 1;
+  let hankoDataUrl = null;
+  let hankoBytes = null;
+  let canvasScale = 1;
+
+  const previewCanvas = document.getElementById('preview-canvas');
+  const ctx = previewCanvas.getContext('2d');
+  const hankoOverlay = document.getElementById('hanko-overlay');
+  const hankoImg = document.getElementById('hanko-img');
+  const previewArea = document.getElementById('preview-area');
+
+  // --- ドロップゾーン共通処理 ---
+  function setupDropzone(dropzoneId, inputId, accept, onFile) {
+    const dz = document.getElementById(dropzoneId);
+    const input = document.getElementById(inputId);
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) onFile(file, dz);
+    });
+    input.addEventListener('change', () => {
+      if (input.files[0]) onFile(input.files[0], dz);
+    });
+  }
+
+  // --- PDF読み込み ---
+  setupDropzone('pdf-dropzone', 'pdf-input', '.pdf', async (file, dz) => {
+    showStatus('PDFを読み込み中…', 'info');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      // pdf-lib
+      pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+      // PDF.js
+      pdfJsDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      totalPages = pdfJsDoc.numPages;
+      currentPage = 1;
+      updatePageNav();
+      await renderPage(currentPage);
+      dz.classList.add('has-file');
+      dz.querySelector('.dropzone-text').textContent = file.name;
+      showStatus(`${totalPages}ページのPDFを読み込みました`, 'success');
+      checkReady();
+    } catch(e) {
+      showStatus('PDFの読み込みに失敗しました: ' + e.message, 'error');
+    }
+  });
+
+  // --- 印鑑読み込み ---
+  setupDropzone('hanko-dropzone', 'hanko-input', 'image/*', async (file, dz) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      hankoDataUrl = e.target.result;
+      hankoBytes = new Uint8Array(e.target.result.split(',')[1]
+        ? await fetch(e.target.result).then(r => r.arrayBuffer())
+        : await file.arrayBuffer());
+      // arrayBufferとして保持
+      hankoBytes = await file.arrayBuffer();
+
+      hankoImg.src = hankoDataUrl;
+      hankoOverlay.style.display = 'block';
+      dz.classList.add('has-file');
+      dz.querySelector('.dropzone-text').textContent = file.name;
+      checkReady();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // --- ページレンダリング ---
+  async function renderPage(pageNum) {
+    if (!pdfJsDoc) return;
+    const page = await pdfJsDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 1.5 });
+    canvasScale = 1.5;
+    previewCanvas.width = viewport.width;
+    previewCanvas.height = viewport.height;
+    previewCanvas.style.display = 'block';
+    document.getElementById('preview-empty').style.display = 'none';
+    await page.render({ canvasContext: ctx, viewport }).promise;
+  }
+
+  // --- ページナビ ---
+  function updatePageNav() {
+    document.getElementById('page-label').textContent = `${currentPage} / ${totalPages} ページ`;
+    document.getElementById('prev-page').disabled = currentPage <= 1;
+    document.getElementById('next-page').disabled = currentPage >= totalPages;
+  }
+  document.getElementById('prev-page').addEventListener('click', async () => {
+    if (currentPage > 1) { currentPage--; updatePageNav(); await renderPage(currentPage); }
+  });
+  document.getElementById('next-page').addEventListener('click', async () => {
+    if (currentPage < totalPages) { currentPage++; updatePageNav(); await renderPage(currentPage); }
+  });
+
+  // --- サイズ・透明度 ---
+  document.getElementById('size-range').addEventListener('input', function() {
+    const v = parseInt(this.value);
+    document.getElementById('size-val').textContent = v + 'px';
+    hankoOverlay.style.width = v + 'px';
+    hankoOverlay.style.height = v + 'px';
+  });
+  document.getElementById('opacity-range').addEventListener('input', function() {
+    const v = parseInt(this.value);
+    document.getElementById('opacity-val').textContent = v + '%';
+    hankoOverlay.style.opacity = v / 100;
+  });
+
+  // --- 印鑑ドラッグ ---
+  let isDragging = false, startX, startY, startLeft, startTop;
+
+  hankoOverlay.addEventListener('mousedown', e => {
+    if (e.target === document.getElementById('resize-handle')) return;
+    isDragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = parseInt(hankoOverlay.style.left) || 0;
+    startTop = parseInt(hankoOverlay.style.top) || 0;
+    hankoOverlay.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    hankoOverlay.style.left = Math.max(0, startLeft + dx) + 'px';
+    hankoOverlay.style.top = Math.max(0, startTop + dy) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    hankoOverlay.style.cursor = 'grab';
+  });
+
+  // タッチ対応
+  hankoOverlay.addEventListener('touchstart', e => {
+    if (e.target === document.getElementById('resize-handle')) return;
+    const t = e.touches[0];
+    isDragging = true;
+    startX = t.clientX; startY = t.clientY;
+    startLeft = parseInt(hankoOverlay.style.left) || 0;
+    startTop = parseInt(hankoOverlay.style.top) || 0;
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    hankoOverlay.style.left = Math.max(0, startLeft + (t.clientX - startX)) + 'px';
+    hankoOverlay.style.top = Math.max(0, startTop + (t.clientY - startY)) + 'px';
+  }, { passive: false });
+  document.addEventListener('touchend', () => { isDragging = false; });
+
+  // --- リサイズハンドル ---
+  const resizeHandle = document.getElementById('resize-handle');
+  let isResizing = false, resizeStartX, resizeStartY, resizeStartSize;
+  resizeHandle.addEventListener('mousedown', e => {
+    isResizing = true;
+    resizeStartX = e.clientX;
+    resizeStartSize = parseInt(hankoOverlay.style.width) || 80;
+    e.stopPropagation(); e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!isResizing) return;
+    const newSize = Math.max(20, resizeStartSize + (e.clientX - resizeStartX));
+    hankoOverlay.style.width = newSize + 'px';
+    hankoOverlay.style.height = newSize + 'px';
+    document.getElementById('size-range').value = newSize;
+    document.getElementById('size-val').textContent = newSize + 'px';
+  });
+  document.addEventListener('mouseup', () => { isResizing = false; });
+
+  // --- 準備完了チェック ---
+  function checkReady() {
+    document.getElementById('controls-card').style.display = 'block';
+    if (pdfDoc && hankoDataUrl) {
+      document.getElementById('download-btn').disabled = false;
+    }
+  }
+
+  // --- ダウンロード ---
+  document.getElementById('download-btn').addEventListener('click', async () => {
+    if (!pdfDoc || !hankoBytes) return;
+    const btn = document.getElementById('download-btn');
+    btn.disabled = true;
+    btn.textContent = '処理中…';
+    showStatus('PDFを生成中…', 'info');
+
+    try {
+      // 印鑑画像をpdf-libに埋め込む
+      const hankoFile = document.getElementById('hanko-input').files[0];
+      let hankoImage;
+      const mimeType = hankoFile?.type || 'image/png';
+      const imgBytes = await hankoFile.arrayBuffer();
+
+      if (mimeType === 'image/png') {
+        hankoImage = await pdfDoc.embedPng(imgBytes);
+      } else {
+        hankoImage = await pdfDoc.embedJpg(imgBytes);
+      }
+
+      // プレビューCanvas上のオーバーレイ座標をPDFの座標に変換
+      const canvasRect = previewCanvas.getBoundingClientRect();
+      const overlayRect = hankoOverlay.getBoundingClientRect();
+
+      // Canvas上の位置（cssピクセル）
+      const cssLeft = overlayRect.left - canvasRect.left;
+      const cssTop  = overlayRect.top  - canvasRect.top;
+      const cssSize = overlayRect.width;
+
+      // CSSピクセル→Canvasピクセル
+      const dpr = window.devicePixelRatio || 1;
+      const canvasDisplayWidth  = canvasRect.width;
+      const canvasDisplayHeight = canvasRect.height;
+      const scaleX = previewCanvas.width  / canvasDisplayWidth;
+      const scaleY = previewCanvas.height / canvasDisplayHeight;
+
+      const canvasLeft = cssLeft * scaleX;
+      const canvasTop  = cssTop  * scaleY;
+      const canvasSize = cssSize * scaleX;
+
+      // CanvasピクセルからPDF座標へ（PDF.jsスケールで割る）
+      const pdfX = canvasLeft / canvasScale;
+      const pdfY = canvasTop  / canvasScale;
+      const pdfSize = canvasSize / canvasScale;
+
+      // 対象ページに印鑑を描画
+      const page = pdfDoc.getPages()[currentPage - 1];
+      const { width: pgW, height: pgH } = page.getSize();
+      const opacity = parseInt(document.getElementById('opacity-range').value) / 100;
+
+      // PDF座標系はY軸反転（左下原点）
+      const pdfYFromBottom = pgH - pdfY - pdfSize;
+
+      page.drawImage(hankoImage, {
+        x: Math.max(0, pdfX),
+        y: Math.max(0, pdfYFromBottom),
+        width: pdfSize,
+        height: pdfSize,
+        opacity: opacity,
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hanko_inserted.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showStatus('ダウンロードしました！', 'success');
+    } catch(e) {
+      showStatus('エラー: ' + e.message, 'error');
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📥 印鑑入りPDFをダウンロード';
+    }
+  });
+
+  // --- ステータス表示 ---
+  function showStatus(msg, type) {
+    const el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'status-msg show ' + type;
+  }
+</script>
+
+<footer style="text-align:center;padding:40px 16px 28px;color:#44445a;font-size:12px;letter-spacing:0.05em;border-top:1px solid #1e1e2a;margin-top:48px;">
+  <a href="https://3s-tools.com" style="color:#44445a;text-decoration:none;font-weight:700;letter-spacing:0.15em;">3S Tools</a>
+  <span style="margin:0 10px;opacity:0.4;">—</span>整理・整頓・清掃
+</footer>
+
+</body>
+</html>

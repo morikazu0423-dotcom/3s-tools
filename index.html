@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3S Tools — 整理・整頓・清掃</title>
+  <meta name="description" content="広告なし・登録不要・ブラウザ完結。すぐ使えるシンプルなWebツール集。" />
+  <meta property="og:title" content="3S Tools" />
+  <meta property="og:description" content="広告なし・登録不要・ブラウザ完結。すぐ使えるシンプルなWebツール集。" />
+  <meta property="og:type" content="website" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --border: #2a2a38;
+      --text: #e8e8f0;
+      --muted: #666677;
+      --accent: #4a9eff;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── ヘッダー ── */
+    header {
+      padding: 72px 24px 48px;
+      text-align: center;
+    }
+    .brand {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: clamp(36px, 8vw, 64px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .tagline {
+      font-size: 16px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .sub-tagline {
+      font-size: 13px;
+      color: #444455;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── ツール一覧 ── */
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      margin-top: 48px;
+    }
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .tool-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .tool-card:hover {
+      border-color: #3a3a50;
+      background: #1e1e28;
+    }
+    .tool-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      width: 40px;
+      text-align: center;
+    }
+    .tool-info { flex: 1; }
+    .tool-name {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .tool-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .tool-arrow {
+      font-size: 16px;
+      color: #333344;
+      flex-shrink: 0;
+    }
+    .tool-card:hover .tool-arrow { color: var(--accent); }
+
+    /* ── フッター ── */
+    footer {
+      text-align: center;
+      padding: 40px 24px 32px;
+      border-top: 1px solid var(--border);
+      color: #333344;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+    footer a { color: #444455; text-decoration: none; }
+    footer a:hover { color: var(--muted); }
+
+    /* ── バッジ ── */
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 11px;
+      color: #444455;
+      padding: 5px 12px;
+      border: 1px solid #222233;
+      border-radius: 99px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">3S Tools</div>
+  <h1>整理・整頓・清掃</h1>
+  <p class="tagline">広告なし &nbsp;·&nbsp; 登録不要 &nbsp;·&nbsp; ブラウザ完結</p>
+  <p class="sub-tagline">すぐ使えて、すぐ消える。あなたのデジタル作業を整える。</p>
+  <div class="badges">
+    <span class="badge">No Ads</span>
+    <span class="badge">No Sign Up</span>
+    <span class="badge">No Upload</span>
+    <span class="badge">Free</span>
+  </div>
+</header>
+
+<main>
+  <p class="section-label">ツール</p>
+  <div class="tool-list">
+    <a href="/tools/hanko-pdf/" class="tool-card">
+      <div class="tool-icon">🔏</div>
+      <div class="tool-info">
+        <div class="tool-name">印鑑PDF挿入</div>
+        <div class="tool-desc">PDFに印鑑画像を配置してダウンロード。登録不要・サーバー送信なし。</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+    <a href="/tools/pdf-merge-split/" class="tool-card">
+      <div class="tool-icon">📄</div>
+      <div class="tool-info">
+        <div class="tool-name">PDF 結合・分割</div>
+        <div class="tool-desc">複数のPDFを1つに結合、またはページを抜き出して分割。</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+    <a href="/tools/sns-char-counter/" class="tool-card">
+      <div class="tool-icon">📝</div>
+      <div class="tool-info">
+        <div class="tool-name">SNS文字数カウンター</div>
+        <div class="tool-desc">X・note・Instagramの文字数を同時カウント。URL換算・ハッシュタグ数も対応。</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+  </div>
+
+  <p class="section-label">ゲーム</p>
+  <div class="tool-list">
+    <a href="/game/hansin/" class="tool-card">
+      <div class="tool-icon">👾</div>
+      <div class="tool-info">
+        <div class="tool-name">返信</div>
+        <div class="tool-desc">メッセージのやり取りで展開するテキストアドベンチャー。</div>
+      </div>
+      <div class="tool-arrow">→</div>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <span style="font-weight:700;letter-spacing:0.15em;">3S Tools</span>
+  <span style="margin:0 10px;opacity:0.3;">—</span>整理・整頓・清掃
+</footer>
+
+</body>
+</html>

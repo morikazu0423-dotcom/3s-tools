@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNS文字数カウンター｜X・note・Instagram 同時カウント</title>
+  <meta name="description" content="X(旧Twitter)・note・Instagramの文字数を同時にカウント。制限超過をリアルタイム警告。登録不要・広告なし・ブラウザ完結。" />
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --text: #e8e8f0;
+      --muted: #888899;
+      --accent: #7b6ef6;
+      --accent2: #5bc8f5;
+      --ok: #4ade80;
+      --warn: #facc15;
+      --danger: #f87171;
+      --x-color: #ffffff;
+      --note-color: #41c9b4;
+      --ig-color: #e1306c;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo { font-size: 22px; }
+    .header-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .header-text p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    main {
+      flex: 1;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── TEXTAREA SECTION ── */
+    .input-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .input-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .input-toolbar-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-clear, .btn-paste {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .btn-clear:hover { color: var(--danger); border-color: var(--danger); }
+    .btn-paste:hover { color: var(--accent2); border-color: var(--accent2); }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 16px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    textarea::placeholder { color: var(--muted); }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .char-total {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .char-total span { color: var(--text); font-weight: 700; font-size: 14px; }
+
+    /* ── SNS CARDS ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .sns-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .sns-card.ok    { border-color: var(--ok); }
+    .sns-card.warn  { border-color: var(--warn); }
+    .sns-card.over  { border-color: var(--danger); }
+    .sns-card.info  { border-color: var(--border); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .sns-icon { font-size: 20px; }
+    .sns-name { font-size: 15px; font-weight: 700; }
+    .sns-handle { font-size: 11px; color: var(--muted); }
+
+    /* progress bar */
+    .progress-wrap {
+      background: var(--surface2);
+      border-radius: 100px;
+      height: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.2s ease, background 0.2s;
+    }
+    .progress-bar.ok   { background: var(--ok); }
+    .progress-bar.warn { background: var(--warn); }
+    .progress-bar.over { background: var(--danger); }
+    .progress-bar.info { background: var(--accent); }
+
+    .count-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .count-used {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .count-used.ok   { color: var(--ok); }
+    .count-used.warn { color: var(--warn); }
+    .count-used.over { color: var(--danger); }
+    .count-used.info { color: var(--accent2); }
+
+    .count-limit {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .count-remaining {
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .count-remaining.ok   { color: var(--ok); }
+    .count-remaining.warn { color: var(--warn); }
+    .count-remaining.over { color: var(--danger); }
+    .count-remaining.info { color: var(--accent2); }
+
+    /* notes */
+    .card-notes {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .note-item {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+      display: flex;
+      gap: 6px;
+    }
+    .note-item + .note-item { margin-top: 3px; }
+    .note-item.active { color: var(--warn); }
+
+    /* hashtag count */
+    .hashtag-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hashtag-count {
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .hashtag-count.over { color: var(--danger); }
+    .hashtag-count.ok   { color: var(--ok); }
+
+    /* ── DETAIL PANEL (X URL helper) ── */
+    .url-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .url-panel h3 {
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .url-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .url-input-row input {
+      flex: 1;
+      min-width: 200px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      padding: 7px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .url-input-row input:focus { border-color: var(--accent); }
+    .url-input-row input::placeholder { color: var(--muted); }
+    .url-badge {
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .url-badge.has-url { color: var(--ok); border-color: var(--ok); }
+
+    /* ── COPY SECTION ── */
+    .copy-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .copy-section h3 {
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .copy-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .copy-tab {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .adapted-text {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      min-height: 60px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text);
+      position: relative;
+    }
+    .adapted-meta {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .adapted-info { font-size: 11px; color: var(--muted); }
+    .btn-copy {
+      font-size: 12px;
+      padding: 5px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-copy:hover { background: var(--accent); color: #fff; }
+    .btn-copy.copied { background: var(--ok); border-color: var(--ok); color: #fff; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      main { padding: 16px 12px 32px; }
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📝</div>
+  <div class="header-text">
+    <h1>SNS 文字数カウンター</h1>
+    <p>X・note・Instagram — リアルタイム同時カウント / 登録不要・広告なし</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- TEXTAREA -->
+  <div class="input-section">
+    <div class="input-toolbar">
+      <span class="input-toolbar-label">テキスト入力</span>
+      <div class="toolbar-actions">
+        <button class="btn-paste" id="btnPaste" title="クリップボードから貼り付け">📋 貼り付け</button>
+        <button class="btn-clear" id="btnClear">✕ クリア</button>
+      </div>
+    </div>
+    <textarea id="mainText" placeholder="ここにテキストを入力してください。X・note・Instagram の文字数が同時にカウントされます。"></textarea>
+    <div class="input-footer">
+      <span class="char-total">文字数（生）: <span id="rawCount">0</span></span>
+      <span class="char-total">改行数: <span id="lineCount">0</span></span>
+    </div>
+  </div>
+
+  <!-- SNS CARDS -->
+  <div class="cards-grid">
+
+    <!-- X card -->
+    <div class="sns-card" id="card-x">
+      <div class="card-header">
+        <span class="sns-icon">𝕏</span>
+        <div>
+          <div class="sns-name" style="color: var(--x-color);">X（旧Twitter）</div>
+          <div class="sns-handle">@twitter</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar ok" id="bar-x" style="width:0%"></div>
+      </div>
+      <div class="count-row">
+        <div class="count-used ok" id="used-x">0</div>
+        <div class="count-limit">/ 280 文字</div>
+      </div>
+      <div class="count-remaining ok" id="rem-x">残り 280 文字</div>
+      <div class="card-notes">
+        <div class="note-item" id="note-x-url">ℹ️ URL は種類に関わらず 23 文字換算</div>
+        <div class="note-item">ℹ️ 日本語・英数字ともに 1文字 = 1 カウント</div>
+      </div>
+    </div>
+
+    <!-- note card -->
+    <div class="sns-card info" id="card-note">
+      <div class="card-header">
+        <span class="sns-icon">📓</span>
+        <div>
+          <div class="sns-name" style="color: var(--note-color);">note</div>
+          <div class="sns-handle">note.com</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar info" id="bar-note" style="width:0%"></div>
+      </div>
+      <div class="count-row">
+        <div class="count-used info" id="used-note">0</div>
+        <div class="count-limit">文字（制限なし）</div>
+      </div>
+      <div class="count-remaining info" id="rem-note">投稿制限なし</div>
+      <div class="card-notes">
+        <div class="note-item">ℹ️ note に文字数上限はありません</div>
+        <div class="note-item">ℹ️ タイトルは 70 文字以内推奨</div>
+      </div>
+    </div>
+
+    <!-- Instagram card -->
+    <div class="sns-card" id="card-ig">
+      <div class="card-header">
+        <span class="sns-icon">📸</span>
+        <div>
+          <div class="sns-name" style="color: var(--ig-color);">Instagram</div>
+          <div class="sns-handle">キャプション</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar ok" id="bar-ig" style="width:0%"></div>
+      </div>
+      <div class="count-row">
+        <div class="count-used ok" id="used-ig">0</div>
+        <div class="count-limit">/ 2,200 文字</div>
+      </div>
+      <div class="count-remaining ok" id="rem-ig">残り 2,200 文字</div>
+      <div class="hashtag-row">
+        <span>ハッシュタグ数</span>
+        <span><span class="hashtag-count ok" id="tag-count">0</span> / 30</span>
+      </div>
+      <div class="card-notes">
+        <div class="note-item">ℹ️ キャプション上限 2,200 文字</div>
+        <div class="note-item" id="note-ig-tags">ℹ️ ハッシュタグは 30 個まで推奨</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- URL HELPER (X) -->
+  <div class="url-panel">
+    <h3>🔗 X URL カウント補助</h3>
+    <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">本文中の URL は自動で 23 文字換算されますが、短縮前の URL を貼り付けて正確なカウントを確認できます。</p>
+    <div class="url-input-row">
+      <input type="text" id="urlInput" placeholder="https://example.com/..." />
+      <span class="url-badge" id="urlBadge">URL未入力</span>
+    </div>
+  </div>
+
+  <!-- ADAPTED COPY -->
+  <div class="copy-section">
+    <h3>📋 SNS 別テキストプレビュー</h3>
+    <div class="copy-tabs">
+      <button class="copy-tab active" data-sns="x">𝕏 X用</button>
+      <button class="copy-tab" data-sns="note">📓 note用</button>
+      <button class="copy-tab" data-sns="ig">📸 Instagram用</button>
+    </div>
+    <div class="adapted-text" id="adaptedText"></div>
+    <div class="adapted-meta">
+      <span class="adapted-info" id="adaptedInfo"></span>
+      <button class="btn-copy" id="btnCopy">コピー</button>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <p>© 2026 便利ツール事業 — ブラウザ完結・入力データは外部送信されません</p>
+</footer>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────
+const X_LIMIT       = 280;
+const X_URL_CHARS   = 23;   // t.co 換算
+const IG_LIMIT      = 2200;
+const IG_TAG_LIMIT  = 30;
+const WARN_RATIO    = 0.85; // 85%で警告
+
+// ── STATE ──────────────────────────────────────────────
+let currentSns   = 'x';
+let manualUrlLen = 0;  // URL入力欄からの補正
+
+// ── ELEMENTS ───────────────────────────────────────────
+const ta       = document.getElementById('mainText');
+const rawEl    = document.getElementById('rawCount');
+const lineEl   = document.getElementById('lineCount');
+const urlInput = document.getElementById('urlInput');
+const urlBadge = document.getElementById('urlBadge');
+
+// ── UTILITIES ──────────────────────────────────────────
+
+/** X のカウントルール
+ *  - URL (http/https) は 23 文字換算
+ *  - それ以外は 1 文字 = 1 カウント
+ *  - 改行は 1 文字
+ */
+function countX(text, extraUrlLen) {
+  // URL を 23 文字に置換してからカウント
+  const URL_RE = /https?:\/\/\S+/g;
+  const replaced = text.replace(URL_RE, () => 'x'.repeat(X_URL_CHARS));
+  // 手動入力URLの分を追加（URLが本文中にない場合の補助）
+  return replaced.length + (extraUrlLen || 0);
+}
+
+function countIG(text) {
+  return [...text].length; // サロゲートペア対応
+}
+
+function countHashtags(text) {
+  const matches = text.match(/#[\w　-鿿豈-﫿가-힯]+/g);
+  return matches ? matches.length : 0;
+}
+
+function countRaw(text) {
+  return [...text].length;
+}
+
+function getState(used, limit) {
+  if (limit === 0) return 'info';
+  const ratio = used / limit;
+  if (used > limit)      return 'over';
+  if (ratio >= WARN_RATIO) return 'warn';
+  return 'ok';
+}
+
+// ── RENDER ─────────────────────────────────────────────
+
+function renderCard(id, used, limit, remText, state) {
+  const card = document.getElementById('card-' + id);
+  const bar  = document.getElementById('bar-'  + id);
+  const usedEl = document.getElementById('used-' + id);
+  const remEl  = document.getElementById('rem-'  + id);
+
+  // remove old state classes
+  card.classList.remove('ok','warn','over','info');
+  bar.classList.remove('ok','warn','over','info');
+  usedEl.classList.remove('ok','warn','over','info');
+  remEl.classList.remove('ok','warn','over','info');
+
+  card.classList.add(state);
+  bar.classList.add(state);
+  usedEl.classList.add(state);
+  remEl.classList.add(state);
+
+  usedEl.textContent = used.toLocaleString();
+  remEl.textContent  = remText;
+
+  if (limit > 0) {
+    const pct = Math.min((used / limit) * 100, 100);
+    bar.style.width = pct + '%';
+  } else {
+    bar.style.width = '0%';
+  }
+}
+
+function update() {
+  const text = ta.value;
+  const raw  = countRaw(text);
+
+  // 生カウント
+  rawEl.textContent  = raw.toLocaleString();
+  lineEl.textContent = (text.split('\n').length - 1).toLocaleString();
+
+  // ── X ─────────────────────
+  const xUsed  = countX(text, manualUrlLen);
+  const xRem   = X_LIMIT - xUsed;
+  const xState = getState(xUsed, X_LIMIT);
+  const xRemText = xRem >= 0
+    ? `残り ${xRem.toLocaleString()} 文字`
+    : `⚠️ ${Math.abs(xRem)} 文字オーバー`;
+  renderCard('x', xUsed, X_LIMIT, xRemText, xState);
+
+  // ── note ──────────────────
+  // note は制限なし
+  const noteUsed  = raw;
+  const noteState = 'info';
+  renderCard('note', noteUsed, 0, '投稿制限なし', noteState);
+
+  // ── Instagram ─────────────
+  const igUsed  = countIG(text);
+  const igRem   = IG_LIMIT - igUsed;
+  const igState = getState(igUsed, IG_LIMIT);
+  const igRemText = igRem >= 0
+    ? `残り ${igRem.toLocaleString()} 文字`
+    : `⚠️ ${Math.abs(igRem)} 文字オーバー`;
+  renderCard('ig', igUsed, IG_LIMIT, igRemText, igState);
+
+  // Hashtag count
+  const tagCount = countHashtags(text);
+  const tagEl    = document.getElementById('tag-count');
+  tagEl.textContent = tagCount;
+  tagEl.classList.remove('ok','over');
+  tagEl.classList.add(tagCount > IG_TAG_LIMIT ? 'over' : 'ok');
+  const noteIgTags = document.getElementById('note-ig-tags');
+  if (tagCount > IG_TAG_LIMIT) {
+    noteIgTags.textContent = `⚠️ ハッシュタグが ${tagCount} 個（上限 30 個を超えています）`;
+    noteIgTags.classList.add('active');
+  } else if (tagCount > 20) {
+    noteIgTags.textContent = `⚠️ ハッシュタグ ${tagCount} 個（30 個が上限、多すぎると表示制限の可能性）`;
+    noteIgTags.classList.add('active');
+  } else {
+    noteIgTags.textContent = 'ℹ️ ハッシュタグは 30 個まで推奨';
+    noteIgTags.classList.remove('active');
+  }
+
+  // 「見切れ防止」コメント (X)
+  const noteXUrl = document.getElementById('note-x-url');
+  const urlsInText = (text.match(/https?:\/\/\S+/g) || []);
+  if (urlsInText.length > 0) {
+    noteXUrl.textContent  = `ℹ️ 本文中に URL ${urlsInText.length} 件 → 各 23 文字換算済み`;
+    noteXUrl.classList.add('active');
+  } else {
+    noteXUrl.textContent  = 'ℹ️ URL は種類に関わらず 23 文字換算';
+    noteXUrl.classList.remove('active');
+  }
+
+  // adapted copy preview
+  renderAdapted();
+}
+
+// ── ADAPTED COPY ───────────────────────────────────────
+
+function renderAdapted() {
+  const text = ta.value;
+  const el   = document.getElementById('adaptedText');
+  const info = document.getElementById('adaptedInfo');
+
+  if (!text.trim()) {
+    el.textContent = '（テキストを入力するとここにプレビューが表示されます）';
+    info.textContent = '';
+    return;
+  }
+
+  if (currentSns === 'x') {
+    const xUsed = countX(text, manualUrlLen);
+    el.textContent = text;
+    const over = xUsed - X_LIMIT;
+    info.textContent = over > 0
+      ? `⚠️ ${over} 文字オーバー — 短縮が必要です`
+      : `✅ X に投稿可能 (${xUsed} / 280 文字)`;
+  } else if (currentSns === 'note') {
+    el.textContent = text;
+    info.textContent = `📓 note にそのまま使用可能 (${[...text].length} 文字)`;
+  } else {
+    // Instagram
+    const igUsed  = countIG(text);
+    const tagCount = countHashtags(text);
+    let notes = [];
+    if (igUsed > IG_LIMIT) notes.push(`${igUsed - IG_LIMIT} 文字オーバー`);
+    if (tagCount > IG_TAG_LIMIT) notes.push(`ハッシュタグ ${tagCount - IG_TAG_LIMIT} 個超過`);
+    el.textContent = text;
+    if (notes.length > 0) {
+      info.textContent = `⚠️ ${notes.join(' / ')}`;
+    } else {
+      info.textContent = `✅ Instagram に投稿可能 (${igUsed} 文字 / タグ ${tagCount} 個)`;
+    }
+  }
+}
+
+// ── URL INPUT ──────────────────────────────────────────
+urlInput.addEventListener('input', () => {
+  const val = urlInput.value.trim();
+  if (val && /^https?:\/\//.test(val)) {
+    manualUrlLen = X_URL_CHARS; // URL = 23 chars
+    urlBadge.textContent = `23 文字換算`;
+    urlBadge.className = 'url-badge has-url';
+  } else if (val) {
+    manualUrlLen = 0;
+    urlBadge.textContent = '有効なURLではありません';
+    urlBadge.className = 'url-badge';
+  } else {
+    manualUrlLen = 0;
+    urlBadge.textContent = 'URL未入力';
+    urlBadge.className = 'url-badge';
+  }
+  update();
+});
+
+// ── COPY TABS ──────────────────────────────────────────
+document.querySelectorAll('.copy-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.copy-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSns = btn.dataset.sns;
+    renderAdapted();
+  });
+});
+
+// ── COPY BUTTON ────────────────────────────────────────
+document.getElementById('btnCopy').addEventListener('click', async () => {
+  const text = ta.value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('btnCopy');
+    btn.textContent = '✅ コピー済み';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch {
+    // fallback
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+  }
+});
+
+// ── PASTE / CLEAR ──────────────────────────────────────
+document.getElementById('btnPaste').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    ta.value = text;
+    update();
+  } catch {
+    ta.focus();
+    alert('ブラウザの設定でクリップボードへのアクセスが許可されていません。\n直接テキストエリアに貼り付けてください（Ctrl+V / ⌘V）');
+  }
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  ta.value = '';
+  urlInput.value = '';
+  manualUrlLen = 0;
+  urlBadge.textContent = 'URL未入力';
+  urlBadge.className = 'url-badge';
+  update();
+});
+
+// ── MAIN INPUT LISTENER ────────────────────────────────
+ta.addEventListener('input', update);
+
+// ── INIT ───────────────────────────────────────────────
+update();
+</script>
+
+<footer style="text-align:center;padding:40px 16px 28px;color:#44445a;font-size:12px;letter-spacing:0.05em;border-top:1px solid #1e1e2a;margin-top:48px;">
+  <a href="https://3s-tools.com" style="color:#44445a;text-decoration:none;font-weight:700;letter-spacing:0.15em;">3S Tools</a>
+  <span style="margin:0 10px;opacity:0.4;">—</span>整理・整頓・清掃
+</footer>
+
+</body>
+</html>
